@@ -2,6 +2,7 @@ package sk.fri.uniza;
 import retrofit2.Call;
 import retrofit2.Response;
 import sk.fri.uniza.model.Location;
+import sk.fri.uniza.model.Token;
 import sk.fri.uniza.model.WeatherData;
 
 import java.io.IOException;
@@ -13,6 +14,7 @@ import java.util.Map;
  */
 public class App {
     public static void main(String[] args) {
+        String token = new String();
         IotNode iotNode = new IotNode();
         // Vytvorenie požiadavky na získanie údajov o aktuálnom počasí z
         // meteo stanice s ID: station_1
@@ -35,9 +37,25 @@ public class App {
             e.printStackTrace();
         }
 
+        // get token
+        Call<Token> tokenCall = iotNode.getWeatherStationService().getToken("Basic YWRtaW46aGVzbG8=", List.of("all"));
+        try {
+            Response<Token> response = tokenCall.execute();
+
+            if (response.isSuccessful()) { // Dotaz na server bol neúspešný
+                //Získanie údajov vo forme Zoznam lokacií
+                Token body = response.body();
+                token = body.getToken();
+                System.out.println(token);
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
         // Vytvorenie požiadavky na získanie údajov o všetkých meteo staniciach
         Call<List<Location>> stationLocations =
-                iotNode.getWeatherStationService().getStationLocations();
+                iotNode.getWeatherStationService().getStationLocationsAuth(token);
 
         try {
             Response<List<Location>> response = stationLocations.execute();
@@ -57,7 +75,7 @@ public class App {
         // meteo stanice s ID: station_1
         Call<WeatherData> currentWeatherPojo =
                 iotNode.getWeatherStationService()
-                        .getCurrentWeather("station_1");
+                        .getCurrentWeatherAuth(token, "station_1");
 
 
         try {
@@ -73,6 +91,11 @@ public class App {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        System.out.println(iotNode.getAverageTemperature("station_1", "01/05/2020 15:45", "02/05/2020 15:45"));
+
+        // Zobrazenie priemernej teploty za obdobie from-to
+        var from = "01/05/2020 15:45";
+        var to = "31/05/2020 15:45";
+        var averageTemp = iotNode.getAverageTemperature("station_1", from , to);
+        System.out.println("The average temperature from " + from + " to " + to + " was " + averageTemp);
     }
 }
